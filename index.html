@@ -427,6 +427,27 @@
       flex-wrap: wrap;
     }
 
+    /* Стилизация контроллера слоев Leaflet под тёмную тему */
+    .leaflet-control-layers {
+      background: rgba(30, 41, 59, 0.9) !important;
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border) !important;
+      border-radius: 8px !important;
+      color: var(--text-main) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+    .leaflet-control-layers-expanded {
+      padding: 8px 12px !important;
+    }
+    .leaflet-control-layers label {
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
     /* Tab 2 - All Map */
     #view-all-map { width: 100%; height: 100%; }
 
@@ -942,14 +963,38 @@
   </main>
 
   <script>
-    const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-
     let tracksData = [];
     let detailMap = null;
     let allMap = null;
     let hoverMarker = null;
     let currentDetailTrack = null;
     let activeTabIndex = 'list';
+
+    // Функция создания набора базовых слоёв карт
+    function createMapTileLayers() {
+      return {
+        "Стандартная OSM": L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }),
+        "Светлая (Positron)": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+        }),
+        "Тёмная (Dark Matter)": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+        }),
+        "Топографическая": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          maxZoom: 17,
+          attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+        }),
+        "Велосипедная (CyclOSM)": L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '&copy; <a href="https://www.cyclosm.org">CyclOSM</a>'
+        })
+      };
+    }
 
     function createSmoothMap(elementId) {
       return L.map(elementId, {
@@ -963,11 +1008,12 @@
       });
     }
 
-    function createBaseTileLayer() {
-      return L.tileLayer(TILE_URL, { 
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--accent);">OpenStreetMap</a> contributors'
-      });
+    function setupMapWithLayers(map) {
+      const layers = createMapTileLayers();
+      // По умолчанию включаем «Светлую (Positron)»
+      layers["Светлая (Positron)"].addTo(map);
+      // Добавляем переключатель в правый верхний угол
+      L.control.layers(layers, null, { position: 'topright' }).addTo(map);
     }
 
     function toggleMapFullscreen() {
@@ -1480,7 +1526,7 @@
       if (detailMap) detailMap.remove();
       detailMap = createSmoothMap('detail-map').setView([track.points[0].lat, track.points[0].lon], 13);
 
-      createBaseTileLayer().addTo(detailMap);
+      setupMapWithLayers(detailMap);
 
       const bounds = L.latLngBounds();
       const fullCoords = track.points.map(p => [p.lat, p.lon]);
@@ -1695,7 +1741,7 @@
 
       allMap = createSmoothMap('view-all-map').setView([50.4501, 30.5234], 10);
 
-      createBaseTileLayer().addTo(allMap);
+      setupMapWithLayers(allMap);
 
       if (tracksData.length === 0) return;
 
