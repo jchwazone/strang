@@ -292,6 +292,7 @@
       position: relative;
     }
 
+    /* Кнопка Полноэкранного режима */
     .fullscreen-btn {
       position: absolute;
       top: 10px;
@@ -301,14 +302,32 @@
       backdrop-filter: blur(8px);
       border: 1px solid var(--border);
       color: var(--text-main);
-      padding: 6px 10px;
+      padding: 6px 12px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 12px;
       font-weight: 600;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      user-select: none;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+
+    .fullscreen-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      border-color: var(--accent);
+    }
+
+    /* Стили для карты в режиме Fullscreen */
+    .detail-map-box:fullscreen {
+      border-radius: 0;
+      border: none;
+    }
+
+    .detail-map-box:fullscreen .fullscreen-btn {
+      top: 16px;
+      right: 16px;
     }
 
     .map-legend {
@@ -584,7 +603,7 @@
           </div>
 
           <div id="detail-map-box" class="detail-map-box">
-            <button class="fullscreen-btn" onclick="toggleMapFullscreen()">⛶ На весь экран</button>
+            <button id="fullscreen-btn" class="fullscreen-btn" onclick="toggleMapFullscreen()">⛶ На весь экран</button>
             <div id="detail-map" style="width: 100%; height: 100%;"></div>
             <div class="map-legend">
               <div class="legend-bar"></div>
@@ -628,15 +647,14 @@
     let currentDetailTrack = null;
     let activeTabIndex = 'list';
 
-    // Конфигурация плавной карты
     function createSmoothMap(elementId) {
       return L.map(elementId, {
         renderer: L.canvas({ padding: 0.5, tolerance: 0 }),
-        zoomSnap: 0,                   // Плавный (дробный) зум без рывков
-        zoomDelta: 0.25,               // Ш шаг приближения при клике/кнопках
-        wheelDebounceTime: 10,         // Минимальная задержка колеса
-        wheelPxPerZoomLevel: 120,      // Плавное приближение колесом мыши/тачпадом
-        inertia: true,                 // Инерция при перетаскивании
+        zoomSnap: 0,
+        zoomDelta: 0.5,
+        wheelDebounceTime: 0,
+        wheelPxPerZoomLevel: 50,
+        inertia: true,
         inertiaDeceleration: 3000,
         zoomAnimation: true,
         fadeAnimation: true,
@@ -662,11 +680,22 @@
       }
     }
 
-    document.addEventListener('fullscreenchange', () => {
+    /* Обработчик смены состояния полноэкранного режима */
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    function handleFullscreenChange() {
+      const btn = document.getElementById('fullscreen-btn');
+      const isFullscreen = !!document.fullscreenElement || !!document.webkitFullscreenElement;
+
+      if (btn) {
+        btn.innerHTML = isFullscreen ? '◱ Свернуть' : '⛶ На весь экран';
+      }
+
       setTimeout(() => {
         if (detailMap) detailMap.invalidateSize();
       }, 100);
-    });
+    }
 
     document.getElementById('file-input').addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
@@ -1360,7 +1389,6 @@
       drawCanvasChart(eleCanvas, eleData, '#10b981', minEle, maxEle, 'Высота (м)', idx);
     }
 
-    /* Отрисовка вкладки «Общая карта» без упрощения геометрии */
     function renderAllMap() {
       if (allMap) allMap.remove();
 
@@ -1373,7 +1401,6 @@
       const bounds = L.latLngBounds();
 
       tracksData.forEach(track => {
-        // Отрисовка абсолютно ВСЕХ точек исходного GPX трека 1-в-1
         const latLngs = track.points.map(p => [p.lat, p.lon]);
 
         const line = L.polyline(latLngs, {
