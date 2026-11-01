@@ -294,10 +294,11 @@
       position: relative;
     }
 
+    /* Перенесено влево, чтобы не перекрывать переключатель слоев карт */
     .fullscreen-btn {
       position: absolute;
       top: 10px;
-      right: 10px;
+      left: 10px;
       z-index: 1000;
       background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(8px);
@@ -327,7 +328,7 @@
 
     .detail-map-box:fullscreen .fullscreen-btn {
       top: 16px;
-      right: 16px;
+      left: 16px;
     }
 
     .map-legend {
@@ -970,28 +971,22 @@
     let currentDetailTrack = null;
     let activeTabIndex = 'list';
 
-    // Функция создания набора базовых слоёв карт
+    // Светлая карта Positron полностью совпадает с оформлением на скриншоте
     function createMapTileLayers() {
       return {
+        "Светлая OSM": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          subdomains: 'abcd',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+        }),
         "Стандартная OSM": L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }),
-        "Светлая (Positron)": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        "Ночная": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        }),
-        "Тёмная (Dark Matter)": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        }),
-        "Топографическая": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-          maxZoom: 17,
-          attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
-        }),
-        "Велосипедная (CyclOSM)": L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
-          maxZoom: 18,
-          attribution: '&copy; <a href="https://www.cyclosm.org">CyclOSM</a>'
+          subdomains: 'abcd',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
         })
       };
     }
@@ -1010,9 +1005,9 @@
 
     function setupMapWithLayers(map) {
       const layers = createMapTileLayers();
-      // По умолчанию включаем «Светлую (Positron)»
-      layers["Светлая (Positron)"].addTo(map);
-      // Добавляем переключатель в правый верхний угол
+      // Устанавливаем «Светлая OSM» (Positron) по умолчанию
+      layers["Светлая OSM"].addTo(map);
+      // Размещаем меню в правом верхнем углу
       L.control.layers(layers, null, { position: 'topright' }).addTo(map);
     }
 
@@ -1806,7 +1801,6 @@
       // 2. Поиск Рекордов
       const longestTrack = [...tracksData].sort((a, b) => b.totalDistance - a.totalDistance)[0];
       
-      // Самый короткий фильтруем (> 0.2 км чтобы исключить ошибочные замеры)
       const validShortTracks = tracksData.filter(t => t.totalDistance >= 0.2);
       const shortestTrack = (validShortTracks.length > 0)
         ? validShortTracks.sort((a, b) => a.totalDistance - b.totalDistance)[0]
