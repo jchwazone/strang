@@ -535,7 +535,6 @@
   </main>
 
   <script>
-    // Современный слой OpenStreetMap Carto
     const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
     let tracksData = [];
@@ -735,6 +734,7 @@
         for (let i = 0; i < points.length; i++) points[i].speed = smoothed[i];
       }
 
+      // Группировка: ровно по 5 точек подряд, чтобы геометрия линии со всеми оригинальными точками полностью сохранялась
       const segments = [];
       const GROUP_SIZE = 5;
       for (let i = 0; i < points.length - 1; i += GROUP_SIZE - 1) {
@@ -1005,15 +1005,17 @@
       document.getElementById('legend-max').textContent = `${track.vmax.toFixed(1)} км/ч`;
 
       if (detailMap) detailMap.remove();
-      detailMap = L.map('detail-map').setView([track.points[0].lat, track.points[0].lon], 13);
+      detailMap = L.map('detail-map', { renderer: L.canvas() }).setView([track.points[0].lat, track.points[0].lon], 13);
 
       createBaseTileLayer().addTo(detailMap);
 
       const bounds = L.latLngBounds();
       const fullCoords = track.points.map(p => [p.lat, p.lon]);
       
+      // Тёмная подложка
       L.polyline(fullCoords, { color: '#000000', weight: 7, opacity: 0.5, lineCap: 'round' }).addTo(detailMap);
 
+      // Отрисовка группок по 5 точек с сохранением всех микро-отрезков
       track.segments.forEach(seg => {
         const color = track.hasTime ? getSpeedHSLColor(seg.speed, track.vmin, track.vmax) : '#3b82f6';
         const coords = seg.points.map(p => [p.lat, p.lon]);
@@ -1067,7 +1069,6 @@
       currentDetailTrack = null;
     }
 
-    // Отрисовка графиков с делениями и значениями по оси Y
     function drawCanvasChart(canvas, dataPoints, color, yMin, yMax, unitLabel, activeIndex) {
       const ctx = canvas.getContext('2d');
       const w = canvas.width = canvas.clientWidth;
@@ -1082,7 +1083,6 @@
 
       const xMax = dataPoints[dataPoints.length - 1].cumDist || 1;
 
-      // Сетка и деления по оси Y (4 деления)
       ctx.strokeStyle = '#334155';
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px sans-serif';
@@ -1095,26 +1095,21 @@
         const val = yMin + normVal * (yMax - yMin);
         const y = (h - padB) - normVal * plotH;
 
-        // Горизонтальная линия сетки
         ctx.beginPath();
         ctx.moveTo(padL, y);
         ctx.lineTo(w - padR, y);
         ctx.stroke();
 
-        // Подпись оси Y
         ctx.fillText(Math.round(val).toString(), padL - 8, y + 4);
       }
 
-      // Единица измерения над осью Y
       ctx.textAlign = 'left';
       ctx.fillText(unitLabel, padL, padT - 6);
 
-      // Границы осей
       ctx.beginPath();
       ctx.moveTo(padL, padT); ctx.lineTo(padL, h - padB); ctx.lineTo(w - padR, h - padB);
       ctx.stroke();
 
-      // Линия графика
       ctx.beginPath();
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
@@ -1128,7 +1123,6 @@
       });
       ctx.stroke();
 
-      // Вертикальный маркер синхронизации
       if (activeIndex !== null && activeIndex >= 0 && activeIndex < dataPoints.length) {
         const pActive = dataPoints[activeIndex];
         const cx = padL + (pActive.cumDist / xMax) * plotW;
@@ -1260,7 +1254,10 @@
     function renderAllMap() {
       if (allMap) allMap.remove();
 
-      allMap = L.map('view-all-map').setView([50.4501, 30.5234], 10);
+      allMap = L.map('view-all-map', {
+        renderer: L.canvas({ padding: 0.5 })
+      }).setView([50.4501, 30.5234], 10);
+
       createBaseTileLayer().addTo(allMap);
 
       if (tracksData.length === 0) return;
@@ -1273,8 +1270,8 @@
 
         const line = L.polyline(latLngs, {
           color: '#ef4444',
-          weight: 2,
-          opacity: 0.85
+          weight: 1,
+          opacity: 1
         }).addTo(allMap);
 
         line.on('click', () => {
