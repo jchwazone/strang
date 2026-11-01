@@ -20,6 +20,8 @@
       --accent-hover: #2563eb;
       --border: #334155;
       --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -292,7 +294,6 @@
       position: relative;
     }
 
-    /* Кнопка Полноэкранного режима */
     .fullscreen-btn {
       position: absolute;
       top: 10px;
@@ -319,7 +320,6 @@
       border-color: var(--accent);
     }
 
-    /* Стили для карты в режиме Fullscreen */
     .detail-map-box:fullscreen {
       border-radius: 0;
       border: none;
@@ -430,6 +430,170 @@
     /* Tab 2 - All Map */
     #view-all-map { width: 100%; height: 100%; }
 
+    /* Tab 3 - Stats View */
+    #view-stats {
+      height: 100%;
+      overflow-y: auto;
+      padding: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .stats-page-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .stats-section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .big-stat-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .big-stat-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .big-stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .records-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .record-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .record-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .record-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .record-icon {
+      font-size: 1.2rem;
+    }
+
+    .record-val {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--success);
+    }
+
+    .record-track-name {
+      font-size: 0.85rem;
+      color: var(--text-main);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-chart-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stat-canvas-container {
+      height: 180px;
+      width: 100%;
+      position: relative;
+    }
+
+    .top-tables-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .top-table-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .top-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .top-table th {
+      text-align: left;
+      padding: 8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+
+    .top-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+    }
+
+    .top-table tr {
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .top-table tr:hover {
+      background-color: var(--bg-card-hover);
+    }
+
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -473,11 +637,11 @@
         font-size: 12px;
       }
 
-      #view-list {
+      #view-list, #view-stats {
         padding: 12px;
       }
 
-      .track-grid {
+      .track-grid, .records-grid, .charts-row, .top-tables-row {
         grid-template-columns: 1fr;
         gap: 12px;
       }
@@ -553,6 +717,7 @@
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('list')">Мои Треки</button>
       <button class="tab-btn" onclick="switchTab('all-map')">Общая Карта</button>
+      <button class="tab-btn" onclick="switchTab('stats')">Статистика</button>
     </div>
   </header>
 
@@ -635,6 +800,145 @@
     <div id="tab-all-map" class="tab-content">
       <div id="view-all-map"></div>
     </div>
+
+    <!-- Tab 3 - General Analytics -->
+    <div id="tab-stats" class="tab-content">
+      <div id="view-stats">
+        <div id="stats-empty" class="empty-state">
+          <h2>Нет данных для статистики</h2>
+          <p>Загрузите GPX треки, чтобы увидеть общие рекорды и аналитику</p>
+        </div>
+        <div id="stats-content" class="stats-page-container" style="display: none;">
+          
+          <!-- Общий обзор -->
+          <div>
+            <div class="stats-section-title">📊 Общий обзор активности</div>
+            <div class="summary-grid">
+              <div class="big-stat-card">
+                <span class="stat-label">Всего километров</span>
+                <span id="sum-dist" class="big-stat-value">0 км</span>
+                <span id="sum-dist-sub" class="big-stat-sub">Загружено треков: 0</span>
+              </div>
+              <div class="big-stat-card">
+                <span class="stat-label">Время в пути</span>
+                <span id="sum-time" class="big-stat-value">0 ч</span>
+                <span id="sum-time-sub" class="big-stat-sub">Общее активное время</span>
+              </div>
+              <div class="big-stat-card">
+                <span class="stat-label">Суммарный набор высоты</span>
+                <span id="sum-ele" class="big-stat-value">0 м</span>
+                <span id="sum-ele-sub" class="big-stat-sub">Набрано по вертикали</span>
+              </div>
+              <div class="big-stat-card">
+                <span class="stat-label">Средний выезд</span>
+                <span id="avg-track-dist" class="big-stat-value">0 км</span>
+                <span id="avg-track-dist-sub" class="big-stat-sub">Средняя дистанция за раз</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Рекорды -->
+          <div>
+            <div class="stats-section-title">🏆 Личные рекорды</div>
+            <div class="records-grid">
+              <div class="record-card" id="rec-card-long">
+                <div class="record-header">
+                  <span class="stat-label">Самый длинный трек</span>
+                  <span class="record-icon">📏</span>
+                </div>
+                <div id="rec-long-val" class="record-val">0 км</div>
+                <div id="rec-long-name" class="record-track-name">--</div>
+              </div>
+
+              <div class="record-card" id="rec-card-short">
+                <div class="record-header">
+                  <span class="stat-label">Самый короткий трек</span>
+                  <span class="record-icon">⏱️</span>
+                </div>
+                <div id="rec-short-val" class="record-val">0 км</div>
+                <div id="rec-short-name" class="record-track-name">--</div>
+              </div>
+
+              <div class="record-card" id="rec-card-fast">
+                <div class="record-header">
+                  <span class="stat-label">Макс. средняя скорость</span>
+                  <span class="record-icon">🏎️</span>
+                </div>
+                <div id="rec-fast-val" class="record-val">0 км/ч</div>
+                <div id="rec-fast-name" class="record-track-name">--</div>
+              </div>
+
+              <div class="record-card" id="rec-card-max-speed">
+                <div class="record-header">
+                  <span class="stat-label">Пиковая скорость</span>
+                  <span class="record-icon">🚀</span>
+                </div>
+                <div id="rec-max-speed-val" class="record-val">0 км/ч</div>
+                <div id="rec-max-speed-name" class="record-track-name">--</div>
+              </div>
+
+              <div class="record-card" id="rec-card-ele">
+                <div class="record-header">
+                  <span class="stat-label">Макс. набор высоты</span>
+                  <span class="record-icon">🏔️</span>
+                </div>
+                <div id="rec-ele-val" class="record-val">0 м</div>
+                <div id="rec-ele-name" class="record-track-name">--</div>
+              </div>
+
+              <div class="record-card" id="rec-card-dur">
+                <div class="record-header">
+                  <span class="stat-label">Самая долгая поездка</span>
+                  <span class="record-icon">⏳</span>
+                </div>
+                <div id="rec-dur-val" class="record-val">00:00</div>
+                <div id="rec-dur-name" class="record-track-name">--</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Инфографика -->
+          <div class="charts-row">
+            <div class="stat-chart-box">
+              <span class="stat-label">Распределение выездов по дистанции</span>
+              <div class="stat-canvas-container">
+                <canvas id="distDistrCanvas"></canvas>
+              </div>
+            </div>
+            <div class="stat-chart-box">
+              <span class="stat-label">Активность по месяцам (км)</span>
+              <div class="stat-canvas-container">
+                <canvas id="monthlyCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Топ-5 Рейтинги -->
+          <div class="top-tables-row">
+            <div class="top-table-box">
+              <div class="stats-section-title" style="font-size:0.95rem;">🥇 Топ-5 самых длинных треков</div>
+              <table class="top-table">
+                <thead>
+                  <tr><th>#</th><th>Название</th><th>Дистанция</th><th>Дата</th></tr>
+                </thead>
+                <tbody id="top-long-tbody"></tbody>
+              </table>
+            </div>
+
+            <div class="top-table-box">
+              <div class="stats-section-title" style="font-size:0.95rem;">⚡ Топ-5 самых быстрых треков</div>
+              <table class="top-table">
+                <thead>
+                  <tr><th>#</th><th>Название</th><th>Ср. скорость</th><th>Дистанция</th></tr>
+                </thead>
+                <tbody id="top-fast-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -650,9 +954,9 @@
     function createSmoothMap(elementId) {
       return L.map(elementId, {
         renderer: L.canvas({ padding: 0.5, tolerance: 0 }),
-        zoomSnap: 1,         // Стандартный зум строго по целым уровням (без дробных значений)
-        zoomDelta: 1,        // Классический шаг зума на 1 уровень за щелчок
-        wheelPxPerZoomLevel: 60, // Стандартная чувствительность колесика
+        zoomSnap: 1,
+        zoomDelta: 1,
+        wheelPxPerZoomLevel: 60,
         zoomAnimation: true,
         fadeAnimation: true,
         markerZoomAnimation: true
@@ -677,7 +981,6 @@
       }
     }
 
-    /* Обработчик смены состояния полноэкранного режима */
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
@@ -768,6 +1071,7 @@
 
       renderTrackGrid();
       if (activeTabIndex === 'all-map') renderAllMap();
+      if (activeTabIndex === 'stats') renderGeneralStats();
     }
 
     async function parseTrackFile(buffer, fileName) {
@@ -1421,6 +1725,186 @@
       }, 150);
     }
 
+    /* РЕНДЕР ТРЕТЬЕЙ ВКЛАДКИ — ОБЩАЯ СТАТИСТИКА */
+    function renderGeneralStats() {
+      const emptyEl = document.getElementById('stats-empty');
+      const contentEl = document.getElementById('stats-content');
+
+      if (tracksData.length === 0) {
+        emptyEl.style.display = 'flex';
+        contentEl.style.display = 'none';
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+      contentEl.style.display = 'flex';
+
+      // 1. Расчет общей сводки
+      const totalDist = tracksData.reduce((acc, t) => acc + t.totalDistance, 0);
+      const totalTimeSec = tracksData.reduce((acc, t) => acc + t.totalTimeSec, 0);
+      const totalEle = tracksData.reduce((acc, t) => acc + t.eleGain, 0);
+      const avgTrackDist = totalDist / tracksData.length;
+
+      document.getElementById('sum-dist').textContent = `${totalDist.toFixed(1)} км`;
+      document.getElementById('sum-dist-sub').textContent = `Загружено треков: ${tracksData.length}`;
+
+      const totalHours = (totalTimeSec / 3600).toFixed(1);
+      document.getElementById('sum-time').textContent = `${totalHours} ч`;
+      document.getElementById('sum-time-sub').textContent = `Чистое время на маршруте`;
+
+      document.getElementById('sum-ele').textContent = `${Math.round(totalEle)} м`;
+      document.getElementById('sum-ele-sub').textContent = `Суммарный подъем`;
+
+      document.getElementById('avg-track-dist').textContent = `${avgTrackDist.toFixed(1)} км`;
+
+      // 2. Поиск Рекордов
+      const longestTrack = [...tracksData].sort((a, b) => b.totalDistance - a.totalDistance)[0];
+      
+      // Самый короткий фильтруем (> 0.2 км чтобы исключить ошибочные замеры)
+      const validShortTracks = tracksData.filter(t => t.totalDistance >= 0.2);
+      const shortestTrack = (validShortTracks.length > 0)
+        ? validShortTracks.sort((a, b) => a.totalDistance - b.totalDistance)[0]
+        : tracksData[0];
+
+      const fastestAvgTrack = [...tracksData].sort((a, b) => b.avgSpeed - a.avgSpeed)[0];
+      const maxSpeedTrack = [...tracksData].sort((a, b) => b.maxSpeed - a.maxSpeed)[0];
+      const maxEleTrack = [...tracksData].sort((a, b) => b.eleGain - a.eleGain)[0];
+      const longestTimeTrack = [...tracksData].sort((a, b) => b.totalTimeSec - a.totalTimeSec)[0];
+
+      const setupRecordCard = (cardId, track, valText) => {
+        const card = document.getElementById(cardId);
+        if (track) {
+          document.getElementById(`${cardId.replace('-card', '')}-val`).textContent = valText;
+          document.getElementById(`${cardId.replace('-card', '')}-name`).textContent = track.name;
+          card.onclick = () => { switchTab('list'); openDetail(track.id); };
+        }
+      };
+
+      setupRecordCard('rec-card-long', longestTrack, `${longestTrack.totalDistance.toFixed(2)} км`);
+      setupRecordCard('rec-card-short', shortestTrack, `${shortestTrack.totalDistance.toFixed(2)} км`);
+      setupRecordCard('rec-card-fast', fastestAvgTrack, `${fastestAvgTrack.avgSpeed.toFixed(1)} км/ч`);
+      setupRecordCard('rec-card-max-speed', maxSpeedTrack, `${maxSpeedTrack.maxSpeed.toFixed(1)} км/ч`);
+      setupRecordCard('rec-card-ele', maxEleTrack, `${Math.round(maxEleTrack.eleGain)} м`);
+      setupRecordCard('rec-card-dur', longestTimeTrack, formatTimeSec(longestTimeTrack.totalTimeSec));
+
+      // 3. Таблицы ТОП-5
+      const topLong = [...tracksData].sort((a, b) => b.totalDistance - a.totalDistance).slice(0, 5);
+      const topFast = [...tracksData].sort((a, b) => b.avgSpeed - a.avgSpeed).slice(0, 5);
+
+      const topLongTbody = document.getElementById('top-long-tbody');
+      topLongTbody.innerHTML = topLong.map((t, idx) => `
+        <tr onclick="switchTab('list'); openDetail('${t.id}');">
+          <td><b>${idx + 1}</b></td>
+          <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.name)}</td>
+          <td style="color:var(--accent); font-weight:600;">${t.totalDistance.toFixed(1)} км</td>
+          <td style="color:var(--text-muted);">${formatDate(t.startTimestamp).split(',')[0]}</td>
+        </tr>
+      `).join('');
+
+      const topFastTbody = document.getElementById('top-fast-tbody');
+      topFastTbody.innerHTML = topFast.map((t, idx) => `
+        <tr onclick="switchTab('list'); openDetail('${t.id}');">
+          <td><b>${idx + 1}</b></td>
+          <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.name)}</td>
+          <td style="color:var(--success); font-weight:600;">${t.avgSpeed.toFixed(1)} км/ч</td>
+          <td style="color:var(--text-muted);">${t.totalDistance.toFixed(1)} км</td>
+        </tr>
+      `).join('');
+
+      // 4. Отрисовка Гистограмм
+      drawDistanceDistributionCanvas();
+      drawMonthlyActivityCanvas();
+    }
+
+    function drawBarChart(canvas, labels, values, color) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+      if (!values || values.length === 0) return;
+
+      const padL = 30, padR = 10, padT = 20, padB = 25;
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+      const maxVal = Math.max(...values, 1);
+
+      ctx.strokeStyle = '#334155';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+
+      const barWidth = (plotW / values.length) * 0.6;
+      const stepX = plotW / values.length;
+
+      values.forEach((val, i) => {
+        const x = padL + i * stepX + stepX / 2;
+        const barH = (val / maxVal) * plotH;
+        const y = (h - padB) - barH;
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(x - barWidth / 2, y, barWidth, barH, [4, 4, 0, 0]);
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        if (val > 0) {
+          ctx.fillText(val.toString(), x, y - 4);
+        }
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(labels[i], x, h - 8);
+      });
+    }
+
+    function drawDistanceDistributionCanvas() {
+      const canvas = document.getElementById('distDistrCanvas');
+      const bins = [
+        { label: '<10км', count: 0 },
+        { label: '10-25км', count: 0 },
+        { label: '25-50км', count: 0 },
+        { label: '50-80км', count: 0 },
+        { label: '80км+', count: 0 }
+      ];
+
+      tracksData.forEach(t => {
+        const d = t.totalDistance;
+        if (d < 10) bins[0].count++;
+        else if (d < 25) bins[1].count++;
+        else if (d < 50) bins[2].count++;
+        else if (d < 80) bins[3].count++;
+        else bins[4].count++;
+      });
+
+      drawBarChart(canvas, bins.map(b => b.label), bins.map(b => b.count), '#3b82f6');
+    }
+
+    function drawMonthlyActivityCanvas() {
+      const canvas = document.getElementById('monthlyCanvas');
+      const monthlyMap = {};
+
+      tracksData.forEach(t => {
+        if (!t.startTimestamp) return;
+        const d = new Date(t.startTimestamp);
+        const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+        monthlyMap[key] = (monthlyMap[key] || 0) + t.totalDistance;
+      });
+
+      const keys = Object.keys(monthlyMap).sort().slice(-6);
+      const labels = keys.map(k => {
+        const [y, m] = k.split('-');
+        return `${m}.${y.slice(2)}`;
+      });
+      const values = keys.map(k => Math.round(monthlyMap[k]));
+
+      if (keys.length === 0) {
+        labels.push('Нет дат');
+        values.push(0);
+      }
+
+      drawBarChart(canvas, labels, values, '#10b981');
+    }
+
     function goHome() {
       closeDetail();
       switchTab('list');
@@ -1434,10 +1918,14 @@
       if (tab === 'list') {
         document.querySelectorAll('.tab-btn')[0].classList.add('active');
         document.getElementById('tab-list').classList.add('active');
-      } else {
+      } else if (tab === 'all-map') {
         document.querySelectorAll('.tab-btn')[1].classList.add('active');
         document.getElementById('tab-all-map').classList.add('active');
         renderAllMap();
+      } else if (tab === 'stats') {
+        document.querySelectorAll('.tab-btn')[2].classList.add('active');
+        document.getElementById('tab-stats').classList.add('active');
+        renderGeneralStats();
       }
     }
 
