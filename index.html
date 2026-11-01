@@ -34,7 +34,7 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      height: 100dvh; /* Поддержка динамической высоты мобильных браузеров */
+      height: 100dvh;
       overflow: hidden;
       touch-action: manipulation;
     }
@@ -428,7 +428,6 @@
 
     input[type="file"] { display: none; }
 
-    /* --- МОБИЛЬНАЯ АДАПТАЦИЯ (MEDIA QUERIES) --- */
     @media (max-width: 640px) {
       header {
         flex-wrap: wrap;
@@ -702,7 +701,7 @@
             tracksData.push(parsed);
           } else {
             skippedCount++;
-            errorLogEl.innerHTML += `<div>Пропущен ${escapeHtml(file.name)}: недостаточно точек</div>`;
+            errorLogEl.innerHTML += `<div>Пропущен ${escapeHtml(file.name)}: не удалось распарсить точки</div>`;
           }
         } catch (err) {
           skippedCount++;
@@ -740,12 +739,12 @@
       }
 
       if (nameLower.endsWith('.gpx')) {
-        const text = new TextDecoder().decode(buffer);
+        const text = new TextDecoder('utf-8').decode(buffer);
         return parseGPX(text, fileName);
       }
 
       if (nameLower.endsWith('.tcx')) {
-        const text = new TextDecoder().decode(buffer);
+        const text = new TextDecoder('utf-8').decode(buffer);
         return parseTCX(text, fileName);
       }
 
@@ -762,4 +761,5 @@
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                 Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Ma
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Ma
