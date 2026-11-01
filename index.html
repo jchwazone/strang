@@ -650,11 +650,11 @@
     function createSmoothMap(elementId) {
       return L.map(elementId, {
         renderer: L.canvas({ padding: 0.5, tolerance: 0 }),
-        zoomSnap: 0,
-        zoomDelta: 0.5,
-        wheelDebounceTime: 0,
-        wheelPxPerZoomLevel: 50,
-        inertia: true,
+        zoomSnap: 0,                   // Плавные дробные значения зума
+        zoomDelta: 1,                  // Увеличен шаг зума с 0.5 до 1 (быстрый отклик)
+        wheelDebounceTime: 0,          // Мгновенный старт анимации
+        wheelPxPerZoomLevel: 15,       // Уменьшено с 50 до 15 px (чем меньше число, тем быстрее приближает)
+        inertia: true,                 // Инерция при перетаскивании мышью
         inertiaDeceleration: 3000,
         zoomAnimation: true,
         fadeAnimation: true,
