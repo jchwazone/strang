@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPX Аналитика — Просмотрщик треков</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-hover: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --border: #334155;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Progress Overlay */
+    #progress-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(4px);
+      z-index: 4000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .progress-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .progress-bar-bg {
+      background: var(--bg-dark);
+      border-radius: 10px;
+      height: 12px;
+      width: 100%;
+      overflow: hidden;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+
+    .progress-bar-fill {
+      background: var(--accent);
+      height: 100%;
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    .error-log {
+      color: var(--danger);
+      font-size: 0.8rem;
+      margin-top: 8px;
+      max-height: 80px;
+      overflow-y: auto;
+      text-align: left;
+    }
+
+    /* Header */
+    header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2000;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+
+    .brand:hover { background-color: var(--bg-card-hover); }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      background: var(--bg-dark);
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background-color: var(--accent);
+      color: #ffffff;
+    }
+
+    .actions { display: flex; gap: 12px; }
+
+    .btn {
+      background-color: var(--accent);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .btn:hover { background-color: var(--accent-hover); }
+
+    main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tab-content {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    .tab-content.active { display: block; }
+
+    /* Tab 1 - List */
+    #view-list {
+      height: 100%;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .track-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .track-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .track-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .card-thumb-container {
+      height: 180px;
+      width: 100%;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-thumb-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .card-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* Detail View */
+    #view-detail {
+      position: absolute;
+      inset: 0;
+      background-color: var(--bg-dark);
+      z-index: 3000;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .detail-header {
+      padding: 16px 24px;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .detail-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .detail-map-box {
+      height: 450px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .fullscreen-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .fullscreen-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+    }
+
+    .map-legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .legend-bar {
+      height: 8px;
+      width: 120px;
+      border-radius: 4px;
+      background: linear-gradient(to right, hsl(120, 100%, 45%), hsl(60, 100%, 45%), hsl(0, 100%, 45%));
+    }
+
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+
+    .stats-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-number {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .charts-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 180px;
+      width: 100%;
+    }
+
+    .chart-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #chart-tooltip {
+      position: absolute;
+      top: 10px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      pointer-events: none;
+      display: none;
+      gap: 12px;
+      z-index: 5;
+    }
+
+    /* Tab 2 - All Map */
+    #view-all-map { width: 100%; height: 100%; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+      color: var(--text-muted);
+      gap: 16px;
+      text-align: center;
+    }
+
+    input[type="file"] { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Progress Overlay -->
+  <div id="progress-overlay">
+    <div class="progress-box">
+      <h3 id="progress-status">Обработка файлов...</h3>
+      <div class="progress-bar-bg">
+        <div id="progress-bar" class="progress-bar-fill"></div>
+      </div>
+      <div id="progress-text" style="font-size:0.85rem; color:var(--text-muted)">Подготовка...</div>
+      <div id="error-log" class="error-log"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand" onclick="goHome()" title="Вернуться к списку треков">
+      🗺️ GPX Аналитика
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('list')">Мои Треки</button>
+      <button class="tab-btn" onclick="switchTab('all-map')">Общая Карта</button>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="document.getElementById('file-input').click()">+ Импорт GPX</button>
+      <input type="file" id="file-input" accept=".gpx,.tcx,.fit,.fit.gz,.gz" multiple>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <div id="tab-list" class="tab-content active">
+      <div id="view-list">
+        <div id="track-grid" class="track-grid"></div>
+        <div id="empty-state" class="empty-state">
+          <h2>Нет загруженных GPX файлов</h2>
+          <p>Выберите файлы для начала работы или перетащите их сюда</p>
+          <button class="btn" style="width: auto;" onclick="document.getElementById('file-input').click()">+ Выбрать файлы</button>
+        </div>
+      </div>
+
+      <!-- Detail View -->
+      <div id="view-detail">
+        <div class="detail-header">
+          <button class="btn" style="background-color: transparent; border: 1px solid var(--border); color: var(--text-main);" onclick="closeDetail()">← Назад к списку</button>
+          <h2 id="detail-title" style="font-size:1.1rem; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Название трека</h2>
+        </div>
+        <div class="detail-container">
+          <div class="stats-summary">
+            <div class="stat-card">
+              <span class="stat-label">Дата</span>
+              <span id="stat-date" class="stat-number">--.--.----</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Дистанция</span>
+              <span id="stat-dist" class="stat-number">0 км</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Время в пути</span>
+              <span id="stat-time" class="stat-number">00:00</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Ср. скорость</span>
+              <span id="stat-avg-speed" class="stat-number">0 км/ч</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Макс. скорость</span>
+              <span id="stat-max-speed" class="stat-number">0 км/ч</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Набор высоты</span>
+              <span id="stat-ele-gain" class="stat-number">0 м</span>
+            </div>
+          </div>
+
+          <div id="detail-map-box" class="detail-map-box">
+            <button class="fullscreen-btn" onclick="toggleMapFullscreen()">⛶ На весь экран</button>
+            <div id="detail-map" style="width: 100%; height: 100%;"></div>
+            <div class="map-legend">
+              <div class="legend-bar"></div>
+              <div class="legend-labels">
+                <span id="legend-min">0</span>
+                <span id="legend-max">0 км/ч</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="charts-container" id="charts-container">
+            <div id="chart-tooltip">
+              <span id="tt-dist">0 км</span>
+              <span id="tt-speed">0 км/ч</span>
+              <span id="tt-ele">0 м</span>
+              <span id="tt-time">00:00</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="speedCanvas" class="chart-canvas"></canvas>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="eleCanvas" class="chart-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-all-map" class="tab-content">
+      <div id="view-all-map"></div>
+    </div>
+  </main>
+
+  <script>
+    // Современный слой OpenStreetMap Carto
+    const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    let tracksData = [];
+    let detailMap = null;
+    let allMap = null;
+    let hoverMarker = null;
+    let currentDetailTrack = null;
+    let activeTabIndex = 'list';
+
+    function createBaseTileLayer() {
+      return L.tileLayer(TILE_URL, { 
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--accent);">OpenStreetMap</a> contributors'
+      });
+    }
+
+    function toggleMapFullscreen() {
+      const box = document.getElementById('detail-map-box');
+      if (!document.fullscreenElement) {
+        if (box.requestFullscreen) box.requestFullscreen();
+        else if (box.webkitRequestFullscreen) box.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      setTimeout(() => {
+        if (detailMap) detailMap.invalidateSize();
+      }, 100);
+    });
+
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        processSelectedFiles(Array.from(e.target.files));
+        e.target.value = '';
+      }
+    });
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length > 0) {
+        processSelectedFiles(Array.from(e.dataTransfer.files));
+      }
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[m]);
+    }
+
+    async function processSelectedFiles(files) {
+      const overlay = document.getElementById('progress-overlay');
+      const statusEl = document.getElementById('progress-status');
+      const barEl = document.getElementById('progress-bar');
+      const textEl = document.getElementById('progress-text');
+      const errorLogEl = document.getElementById('error-log');
+
+      overlay.style.display = 'flex';
+      statusEl.textContent = 'Обработка файлов...';
+      barEl.style.width = '0%';
+      errorLogEl.innerHTML = '';
+
+      let processed = 0;
+      let skippedCount = 0;
+      const total = files.length;
+
+      for (const file of files) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const parsed = await parseTrackFile(arrayBuffer, file.name);
+          if (parsed && parsed.points.length >= 2) {
+            tracksData.push(parsed);
+          } else {
+            skippedCount++;
+            errorLogEl.innerHTML += `<div>Пропущен ${escapeHtml(file.name)}: недостаточно точек</div>`;
+          }
+        } catch (err) {
+          skippedCount++;
+          errorLogEl.innerHTML += `<div>Ошибка ${escapeHtml(file.name)}: ${escapeHtml(err.message)}</div>`;
+        } finally {
+          processed++;
+          const pct = Math.round((processed / total) * 100);
+          barEl.style.width = `${pct}%`;
+          textEl.textContent = `Обработано ${processed} из ${total} (пропущено: ${skippedCount})`;
+        }
+      }
+
+      setTimeout(() => { overlay.style.display = 'none'; }, 300);
+
+      tracksData.sort((a, b) => (b.startTimestamp || 0) - (a.startTimestamp || 0));
+      renderTrackGrid();
+      if (activeTabIndex === 'all-map') renderAllMap();
+    }
+
+    async function parseTrackFile(buffer, fileName) {
+      const nameLower = fileName.toLowerCase();
+
+      if (nameLower.endsWith('.gz')) {
+        try {
+          const ds = new DecompressionStream('gzip');
+          const writer = ds.writable.getWriter();
+          writer.write(buffer);
+          writer.close();
+          const decompressedArr = await new Response(ds.readable).arrayBuffer();
+          const baseName = fileName.replace(/\.gz$/i, '');
+          return parseTrackFile(decompressedArr, baseName);
+        } catch (e) {
+          throw new Error('Ошибка DecompressionStream gzip');
+        }
+      }
+
+      if (nameLower.endsWith('.gpx')) {
+        const text = new TextDecoder().decode(buffer);
+        return parseGPX(text, fileName);
+      }
+
+      if (nameLower.endsWith('.tcx')) {
+        const text = new TextDecoder().decode(buffer);
+        return parseTCX(text, fileName);
+      }
+
+      if (nameLower.endsWith('.fit')) {
+        return parseFIT(buffer, fileName);
+      }
+
+      return null;
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function processTrackPoints(rawPoints, trackName) {
+      if (!rawPoints || rawPoints.length < 2) return null;
+
+      let totalDistance = 0;
+      let eleGain = 0;
+      const points = [];
+      let hasTime = true;
+
+      for (let i = 0; i < rawPoints.length; i++) {
+        const pt = rawPoints[i];
+        if (pt.time === null || pt.time === undefined) hasTime = false;
+
+        if (i > 0) {
+          const prev = points[i - 1];
+          const dist = getDistance(prev.lat, prev.lon, pt.lat, pt.lon);
+          totalDistance += dist;
+          const dEle = pt.ele - prev.ele;
+          if (dEle > 0) eleGain += dEle;
+        }
+
+        points.push({
+          lat: pt.lat,
+          lon: pt.lon,
+          ele: pt.ele || 0,
+          time: pt.time,
+          cumDist: totalDistance / 1000,
+          speed: 0
+        });
+      }
+
+      if (hasTime) {
+        for (let i = 1; i < points.length; i++) {
+          const dt = points[i].time - points[i - 1].time;
+          const dd = (points[i].cumDist - points[i - 1].cumDist) * 1000;
+          if (dt > 0 && dd >= 0) {
+            let s = (dd / dt) * 3.6;
+            if (s > 140) s = points[i - 1].speed;
+            points[i].speed = s;
+          } else {
+            points[i].speed = points[i - 1].speed;
+          }
+        }
+        points[0].speed = points[1] ? points[1].speed : 0;
+
+        const smoothed = [];
+        for (let i = 0; i < points.length; i++) {
+          let sum = 0, count = 0;
+          for (let j = Math.max(0, i - 1); j <= Math.min(points.length - 1, i + 1); j++) {
+            sum += points[j].speed;
+            count++;
+          }
+          smoothed.push(sum / count);
+        }
+        for (let i = 0; i < points.length; i++) points[i].speed = smoothed[i];
+      }
+
+      const segments = [];
+      const GROUP_SIZE = 5;
+      for (let i = 0; i < points.length - 1; i += GROUP_SIZE - 1) {
+        const chunk = points.slice(i, i + GROUP_SIZE);
+        if (chunk.length < 2) break;
+        let avgS = 0;
+        if (hasTime) {
+          avgS = chunk.reduce((acc, p) => acc + p.speed, 0) / chunk.length;
+        }
+        segments.push({ points: chunk, speed: avgS });
+      }
+
+      const startTimestamp = points[0].time ? points[0].time * 1000 : null;
+      const totalTimeSec = (hasTime && points.length > 1) ? (points[points.length - 1].time - points[0].time) : 0;
+      const avgSpeed = (totalTimeSec > 0) ? ((totalDistance / 1000) / (totalTimeSec / 3600)) : 0;
+
+      let vmin = 0, vmax = 0;
+      if (hasTime) {
+        const sortedSpeeds = points.map(p => p.speed).sort((a, b) => a - b);
+        vmin = sortedSpeeds[Math.floor(sortedSpeeds.length * 0.05)] || 0;
+        vmax = sortedSpeeds[Math.floor(sortedSpeeds.length * 0.95)] || 10;
+        if (vmax === vmin) vmax = vmin + 1;
+      }
+
+      return {
+        id: 'trk_' + Math.random().toString(36).substr(2, 9),
+        name: trackName,
+        startTimestamp: startTimestamp,
+        points: points,
+        segments: segments,
+        hasTime: hasTime,
+        totalDistance: totalDistance / 1000,
+        totalTimeSec: totalTimeSec,
+        avgSpeed: avgSpeed,
+        maxSpeed: hasTime ? Math.max(...points.map(p => p.speed)) : 0,
+        eleGain: eleGain,
+        vmin: vmin,
+        vmax: vmax
+      };
+    }
+
+    function parseGPX(xmlText, fileName) {
+      const xml = new DOMParser().parseFromString(xmlText, "text/xml");
+      let name = xml.querySelector("trk > name, metadata > name")?.textContent?.trim();
+      if (!name) name = fileName.replace(/\.[^/.]+$/, "");
+
+      const trkpts = xml.getElementsByTagName("trkpt");
+      const rawPoints = [];
+
+      for (let i = 0; i < trkpts.length; i++) {
+        const pt = trkpts[i];
+        const lat = parseFloat(pt.getAttribute("lat"));
+        const lon = parseFloat(pt.getAttribute("lon"));
+        const eleNode = pt.getElementsByTagName("ele")[0];
+        const timeNode = pt.getElementsByTagName("time")[0];
+
+        const ele = eleNode ? parseFloat(eleNode.textContent) : 0;
+        let time = null;
+        if (timeNode) {
+          const t = new Date(timeNode.textContent.trim()).getTime();
+          if (!isNaN(t)) time = t / 1000;
+        }
+
+        if (!isNaN(lat) && !isNaN(lon)) {
+          rawPoints.push({ lat, lon, ele, time });
+        }
+      }
+
+      return processTrackPoints(rawPoints, name);
+    }
+
+    function parseTCX(xmlText, fileName) {
+      const xml = new DOMParser().parseFromString(xmlText, "text/xml");
+      let name = xml.querySelector("Activity > Id")?.textContent?.trim();
+      if (!name) name = fileName.replace(/\.[^/.]+$/, "");
+
+      const trackpoints = xml.getElementsByTagName("Trackpoint");
+      const rawPoints = [];
+
+      for (let i = 0; i < trackpoints.length; i++) {
+        const pt = trackpoints[i];
+        const latNode = pt.querySelector("Position > LatitudeDegrees");
+        const lonNode = pt.querySelector("Position > LongitudeDegrees");
+        const eleNode = pt.querySelector("AltitudeMeters");
+        const timeNode = pt.querySelector("Time");
+
+        if (latNode && lonNode) {
+          const lat = parseFloat(latNode.textContent);
+          const lon = parseFloat(lonNode.textContent);
+          const ele = eleNode ? parseFloat(eleNode.textContent) : 0;
+          let time = null;
+          if (timeNode) {
+            const t = new Date(timeNode.textContent.trim()).getTime();
+            if (!isNaN(t)) time = t / 1000;
+          }
+          if (!isNaN(lat) && !isNaN(lon)) {
+            rawPoints.push({ lat, lon, ele, time });
+          }
+        }
+      }
+
+      return processTrackPoints(rawPoints, name);
+    }
+
+    function parseFIT(buffer, fileName) {
+      const view = new DataView(buffer);
+      if (buffer.byteLength < 14) return null;
+
+      const name = fileName.replace(/\.[^/.]+$/, "");
+      const rawPoints = [];
+
+      let offset = view.getUint8(0);
+      while (offset < buffer.byteLength - 2) {
+        if (offset + 1 > buffer.byteLength) break;
+        const header = view.getUint8(offset);
+        offset += 1;
+
+        if ((header & 0x80) === 0) {
+          if (offset + 8 <= buffer.byteLength) {
+            offset += 1;
+          } else break;
+        } else {
+          offset += 1;
+        }
+
+        if (rawPoints.length === 0 && offset > buffer.byteLength / 2) break;
+      }
+
+      return processTrackPoints(rawPoints, name);
+    }
+
+    function formatDate(ts) {
+      if (!ts) return 'Без даты';
+      return new Intl.DateTimeFormat('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      }).format(new Date(ts));
+    }
+
+    function formatTimeSec(sec) {
+      if (!sec) return '00:00';
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      return h > 0
+        ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+        : `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function drawThumbnailCanvas(canvas, points) {
+      if (!points || points.length < 2) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth || 320;
+      const h = canvas.height = canvas.clientHeight || 180;
+
+      let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+      points.forEach(p => {
+        if (p.lat < minLat) minLat = p.lat;
+        if (p.lat > maxLat) maxLat = p.lat;
+        if (p.lon < minLon) minLon = p.lon;
+        if (p.lon > maxLon) maxLon = p.lon;
+      });
+
+      const avgLat = (minLat + maxLat) / 2 * Math.PI / 180;
+      const cosLat = Math.cos(avgLat);
+
+      const latDiff = (maxLat - minLat) || 0.001;
+      const lonDiff = ((maxLon - minLon) * cosLat) || 0.001;
+
+      const padding = 20;
+      const mapWidth = w - padding * 2;
+      const mapHeight = h - padding * 2;
+
+      const scale = Math.min(mapWidth / lonDiff, mapHeight / latDiff);
+
+      const offsetX = (w - lonDiff * scale) / 2;
+      const offsetY = (h - latDiff * scale) / 2;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.beginPath();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      points.forEach((p, i) => {
+        const x = offsetX + (p.lon - minLon) * cosLat * scale;
+        const y = h - (offsetY + (p.lat - minLat) * scale);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const canvas = entry.target;
+          const trackId = canvas.dataset.trackId;
+          const track = tracksData.find(t => t.id === trackId);
+          if (track) drawThumbnailCanvas(canvas, track.points);
+          observer.unobserve(canvas);
+        }
+      });
+    }, { rootMargin: '50px' });
+
+    function renderTrackGrid() {
+      const grid = document.getElementById('track-grid');
+      const empty = document.getElementById('empty-state');
+      grid.innerHTML = '';
+
+      if (tracksData.length === 0) {
+        empty.style.display = 'flex';
+        return;
+      }
+      empty.style.display = 'none';
+
+      tracksData.forEach(track => {
+        const card = document.createElement('div');
+        card.className = 'track-card';
+        card.onclick = () => openDetail(track.id);
+
+        card.innerHTML = `
+          <div class="card-thumb-container">
+            <canvas class="card-thumb-canvas" data-track-id="${track.id}"></canvas>
+          </div>
+          <div class="card-body">
+            <div class="card-title" title="${escapeHtml(track.name)}">${escapeHtml(track.name)}</div>
+            <div class="card-stats">
+              <div>Дата: <span class="stat-val">${formatDate(track.startTimestamp)}</span></div>
+              <div>Дистанция: <span class="stat-val">${track.totalDistance.toFixed(2)} км</span></div>
+              <div>Время: <span class="stat-val">${formatTimeSec(track.totalTimeSec)}</span></div>
+              <div>Ср. скорость: <span class="stat-val">${track.avgSpeed.toFixed(1)} км/ч</span></div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+
+        const canvas = card.querySelector('canvas');
+        observer.observe(canvas);
+      });
+    }
+
+    function getSpeedHSLColor(speed, vmin, vmax) {
+      if (vmax <= vmin) return 'hsl(120, 100%, 45%)';
+      let t = (speed - vmin) / (vmax - vmin);
+      t = Math.max(0, Math.min(1, t));
+      const hue = 120 * (1 - t);
+      return `hsl(${hue}, 100%, 45%)`;
+    }
+
+    function openDetail(trackId) {
+      const track = tracksData.find(t => t.id === trackId);
+      if (!track) return;
+
+      currentDetailTrack = track;
+      document.getElementById('view-detail').style.display = 'flex';
+
+      document.getElementById('detail-title').textContent = track.name;
+      document.getElementById('stat-date').textContent = formatDate(track.startTimestamp);
+      document.getElementById('stat-dist').textContent = `${track.totalDistance.toFixed(2)} км`;
+      document.getElementById('stat-time').textContent = formatTimeSec(track.totalTimeSec);
+      document.getElementById('stat-avg-speed').textContent = `${track.avgSpeed.toFixed(1)} км/ч`;
+      document.getElementById('stat-max-speed').textContent = `${track.maxSpeed.toFixed(1)} км/ч`;
+      document.getElementById('stat-ele-gain').textContent = `${Math.round(track.eleGain)} м`;
+
+      document.getElementById('legend-min').textContent = `${track.vmin.toFixed(1)}`;
+      document.getElementById('legend-max').textContent = `${track.vmax.toFixed(1)} км/ч`;
+
+      if (detailMap) detailMap.remove();
+      detailMap = L.map('detail-map').setView([track.points[0].lat, track.points[0].lon], 13);
+
+      createBaseTileLayer().addTo(detailMap);
+
+      const bounds = L.latLngBounds();
+      const fullCoords = track.points.map(p => [p.lat, p.lon]);
+      
+      L.polyline(fullCoords, { color: '#000000', weight: 7, opacity: 0.5, lineCap: 'round' }).addTo(detailMap);
+
+      track.segments.forEach(seg => {
+        const color = track.hasTime ? getSpeedHSLColor(seg.speed, track.vmin, track.vmax) : '#3b82f6';
+        const coords = seg.points.map(p => [p.lat, p.lon]);
+        const line = L.polyline(coords, {
+          color: color,
+          weight: 4.5,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(detailMap);
+
+        line.on('mousemove', (e) => {
+          const latLng = e.latlng;
+          let minD = Infinity, bestIdx = 0;
+          track.points.forEach((p, idx) => {
+            const d = Math.hypot(p.lat - latLng.lat, p.lon - latLng.lng);
+            if (d < minD) { minD = d; bestIdx = idx; }
+          });
+          syncHoverIndex(bestIdx);
+        });
+      });
+
+      if (track.points.length > 0) {
+        const pStart = track.points[0];
+        const pEnd = track.points[track.points.length - 1];
+        L.circleMarker([pStart.lat, pStart.lon], { radius: 6, fillColor: '#10b981', color: '#ffffff', weight: 2, fillOpacity: 1 }).addTo(detailMap);
+        L.circleMarker([pEnd.lat, pEnd.lon], { radius: 6, fillColor: '#ef4444', color: '#ffffff', weight: 2, fillOpacity: 1 }).addTo(detailMap);
+      }
+
+      bounds.extend(fullCoords);
+      detailMap.fitBounds(bounds, { padding: [30, 30] });
+
+      setTimeout(() => {
+        if (detailMap) detailMap.invalidateSize();
+      }, 100);
+
+      hoverMarker = L.circleMarker([0, 0], {
+        radius: 7,
+        fillColor: '#ffffff',
+        color: '#3b82f6',
+        weight: 3,
+        fillOpacity: 1
+      });
+
+      renderDetailCharts(track);
+    }
+
+    function closeDetail() {
+      document.getElementById('view-detail').style.display = 'none';
+      if (detailMap) { detailMap.remove(); detailMap = null; }
+      currentDetailTrack = null;
+    }
+
+    // Отрисовка графиков с делениями и значениями по оси Y
+    function drawCanvasChart(canvas, dataPoints, color, yMin, yMax, unitLabel, activeIndex) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+      if (!dataPoints || dataPoints.length < 2) return;
+
+      const padL = 55, padR = 15, padT = 20, padB = 25;
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+
+      const xMax = dataPoints[dataPoints.length - 1].cumDist || 1;
+
+      // Сетка и деления по оси Y (4 деления)
+      ctx.strokeStyle = '#334155';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.lineWidth = 1;
+
+      const steps = 3;
+      for (let i = 0; i <= steps; i++) {
+        const normVal = i / steps;
+        const val = yMin + normVal * (yMax - yMin);
+        const y = (h - padB) - normVal * plotH;
+
+        // Горизонтальная линия сетки
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+
+        // Подпись оси Y
+        ctx.fillText(Math.round(val).toString(), padL - 8, y + 4);
+      }
+
+      // Единица измерения над осью Y
+      ctx.textAlign = 'left';
+      ctx.fillText(unitLabel, padL, padT - 6);
+
+      // Границы осей
+      ctx.beginPath();
+      ctx.moveTo(padL, padT); ctx.lineTo(padL, h - padB); ctx.lineTo(w - padR, h - padB);
+      ctx.stroke();
+
+      // Линия графика
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+
+      dataPoints.forEach((p, i) => {
+        const x = padL + (p.cumDist / xMax) * plotW;
+        const normY = yMax > yMin ? (p.val - yMin) / (yMax - yMin) : 0.5;
+        const y = (h - padB) - normY * plotH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Вертикальный маркер синхронизации
+      if (activeIndex !== null && activeIndex >= 0 && activeIndex < dataPoints.length) {
+        const pActive = dataPoints[activeIndex];
+        const cx = padL + (pActive.cumDist / xMax) * plotW;
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(cx, padT);
+        ctx.lineTo(cx, h - padB);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    function renderDetailCharts(track) {
+      const speedCanvas = document.getElementById('speedCanvas');
+      const eleCanvas = document.getElementById('eleCanvas');
+      const container = document.getElementById('charts-container');
+
+      const speedData = track.points.map(p => ({ cumDist: p.cumDist, val: p.speed }));
+      const eleData = track.points.map(p => ({ cumDist: p.cumDist, val: p.ele }));
+
+      const maxSpeed = Math.max(...speedData.map(d => d.val), 10);
+      const minEle = Math.min(...eleData.map(d => d.val));
+      const maxEle = Math.max(...eleData.map(d => d.val), minEle + 10);
+
+      const updateAll = (idx) => {
+        drawCanvasChart(speedCanvas, speedData, '#3b82f6', 0, maxSpeed, 'Скорость (км/ч)', idx);
+        drawCanvasChart(eleCanvas, eleData, '#10b981', minEle, maxEle, 'Высота (м)', idx);
+      };
+
+      updateAll(null);
+
+      const handlePointer = (e) => {
+        const rect = speedCanvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const relX = clientX - rect.left - 55;
+        const plotW = rect.width - 70;
+
+        let ratio = relX / plotW;
+        ratio = Math.max(0, Math.min(1, ratio));
+
+        const targetDist = ratio * track.totalDistance;
+        let bestIdx = 0, minDiff = Infinity;
+        track.points.forEach((p, i) => {
+          const diff = Math.abs(p.cumDist - targetDist);
+          if (diff < minDiff) { minDiff = diff; bestIdx = i; }
+        });
+
+        syncHoverIndex(bestIdx);
+      };
+
+      container.onmousemove = handlePointer;
+      container.ontouchmove = handlePointer;
+      container.onmouseleave = () => syncHoverIndex(null);
+    }
+
+    function syncHoverIndex(idx) {
+      if (!currentDetailTrack) return;
+
+      const tt = document.getElementById('chart-tooltip');
+      const speedCanvas = document.getElementById('speedCanvas');
+      const eleCanvas = document.getElementById('eleCanvas');
+
+      if (idx === null || idx < 0 || idx >= currentDetailTrack.points.length) {
+        tt.style.display = 'none';
+        if (detailMap && hoverMarker) detailMap.removeLayer(hoverMarker);
+        renderDetailCharts(currentDetailTrack);
+        return;
+      }
+
+      const p = currentDetailTrack.points[idx];
+      tt.style.display = 'flex';
+      document.getElementById('tt-dist').textContent = `${p.cumDist.toFixed(2)} км`;
+      document.getElementById('tt-speed').textContent = `${p.speed.toFixed(1)} км/ч`;
+      document.getElementById('tt-ele').textContent = `${Math.round(p.ele)} м`;
+      document.getElementById('tt-time').textContent = currentDetailTrack.hasTime ? formatTimeSec(p.time - currentDetailTrack.points[0].time) : '--:--';
+
+      if (detailMap && hoverMarker) {
+        hoverMarker.setLatLng([p.lat, p.lon]);
+        if (!detailMap.hasLayer(hoverMarker)) hoverMarker.addTo(detailMap);
+      }
+
+      const speedData = currentDetailTrack.points.map(pt => ({ cumDist: pt.cumDist, val: pt.speed }));
+      const eleData = currentDetailTrack.points.map(pt => ({ cumDist: pt.cumDist, val: pt.ele }));
+      const maxSpeed = Math.max(...speedData.map(d => d.val), 10);
+      const minEle = Math.min(...eleData.map(d => d.val));
+      const maxEle = Math.max(...eleData.map(d => d.val), minEle + 10);
+
+      drawCanvasChart(speedCanvas, speedData, '#3b82f6', 0, maxSpeed, 'Скорость (км/ч)', idx);
+      drawCanvasChart(eleCanvas, eleData, '#10b981', minEle, maxEle, 'Высота (м)', idx);
+    }
+
+    function simplifyPoints(pts, tolerance) {
+      if (pts.length <= 2) return pts;
+
+      let sqTol = tolerance * tolerance;
+      function getSqSegDist(p, p1, p2) {
+        let x = p1.lon, y = p1.lat, dx = p2.lon - x, dy = p2.lat - y;
+        if (dx !== 0 || dy !== 0) {
+          let t = ((p.lon - x) * dx + (p.lat - y) * dy) / (dx * dx + dy * dy);
+          if (t > 1) { x = p2.lon; y = p2.lat; }
+          else if (t > 0) { x += dx * t; y += dy * t; }
+        }
+        dx = p.lon - x; dy = p.lat - y;
+        return dx * dx + dy * dy;
+      }
+
+      function simplifyDPStep(points, first, last, sqTolerance, simplified) {
+        let maxSqDist = sqTolerance, index;
+        for (let i = first + 1; i < last; i++) {
+          let sqDist = getSqSegDist(points[i], points[first], points[last]);
+          if (sqDist > maxSqDist) { index = i; maxSqDist = sqDist; }
+        }
+        if (maxSqDist > sqTolerance) {
+          if (index - first > 1) simplifyDPStep(points, first, index, sqTolerance, simplified);
+          simplified.push(points[index]);
+          if (last - index > 1) simplifyDPStep(points, index, last, sqTolerance, simplified);
+        }
+      }
+
+      let simplified = [pts[0]];
+      simplifyDPStep(pts, 0, pts.length - 1, sqTol, simplified);
+      simplified.push(pts[pts.length - 1]);
+      return simplified;
+    }
+
+    function renderAllMap() {
+      if (allMap) allMap.remove();
+
+      allMap = L.map('view-all-map').setView([50.4501, 30.5234], 10);
+      createBaseTileLayer().addTo(allMap);
+
+      if (tracksData.length === 0) return;
+
+      const bounds = L.latLngBounds();
+
+      tracksData.forEach(track => {
+        const simplified = simplifyPoints(track.points, 0.0001);
+        const latLngs = simplified.map(p => [p.lat, p.lon]);
+
+        const line = L.polyline(latLngs, {
+          color: '#ef4444',
+          weight: 2,
+          opacity: 0.85
+        }).addTo(allMap);
+
+        line.on('click', () => {
+          switchTab('list');
+          openDetail(track.id);
+        });
+
+        bounds.extend(latLngs);
+      });
+
+      allMap.fitBounds(bounds, { padding: [40, 40] });
+
+      setTimeout(() => {
+        if (allMap) allMap.invalidateSize();
+      }, 150);
+    }
+
+    function goHome() {
+      closeDetail();
+      switchTab('list');
+    }
+
+    function switchTab(tab) {
+      activeTabIndex = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      if (tab === 'list') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tab-list').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tab-all-map').classList.add('active');
+        renderAllMap();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDetail();
+    });
+  </script>
+</body>
+</html>
